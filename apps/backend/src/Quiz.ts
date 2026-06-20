@@ -27,7 +27,7 @@ interface Problem {
   option: {
     id: number;
     title: string;
-  };
+  }[];
   submission: Submission[];
 }
 
@@ -37,6 +37,7 @@ export class Quiz {
   public roomId: string;
   private activeProblem: number;
   private users: User[];
+  private activeState: "leaderboard" | "question" | "not_started" | "ended"
 
   constructor(roomId: string) {
     this.users = [];
@@ -44,6 +45,7 @@ export class Quiz {
     this.hasStarted = false;
     this.roomId = roomId;
     this.activeProblem = 0;
+    this.activeState = "not_started"
   }
 
   addProblem(problem: Problem) {
@@ -68,7 +70,7 @@ export class Quiz {
   }
 
   sendLeaderboard() {
-    const leaderboard = this.getLeaderboard().splice(0, 20);
+    const leaderboard = this.getLeaderboard();
     IoManager.getIo().to(this.roomId).emit("leaderboard", {
       leaderboard,
     });
@@ -135,6 +137,36 @@ export class Quiz {
   }
 
   getLeaderboard() {
-    return this.users.sort((a, b) => (a.point < b.point ? 1 : -1));
+    return this.users.sort((a, b) => (a.point < b.point ? 1 : -1)).splice(0,20);
+  }
+
+  getCurrentState(){
+    if (this.activeState === "leaderboard") {
+      return {
+        type:"leaderboard",
+        leaderboard: this.getLeaderboard()
+      }
+    }
+    
+    if(this.activeState === "question"){
+      const problem = this.problems[this.activeProblem]
+      return {
+        type:"question",
+        problem
+      }
+    }
+
+    if (this.activeState === "ended") {
+      return {
+        type : "ended",
+        leaderboard:this.getLeaderboard()
+      }
+    }
+
+    if (this.activeState === "not_started") {
+      return {
+        type:"not_started",
+      }
+    }
   }
 }

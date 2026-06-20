@@ -1,6 +1,8 @@
 import { Socket } from "socket.io";
 import { QuizManager } from "./QuizManager";
 
+const ADMINPASSWORD = "ADMIN_PASSWORD"
+
 export class UserManager {
     private users: {
         roomId: string
@@ -23,12 +25,34 @@ export class UserManager {
     }
     
     private createHandlers(roomId:string, socket:Socket){
-        socket.on("submission",(data) =>{
+        socket.on("join",(data) =>{
             const userId = this.quizManager.addUser(data.roomId, data.name)
-            socket.emit("userId",{
-                userId
+            socket.emit("init",{
+                userId,
+                state:this.quizManager.getCurrentState(roomId)
             })
         })
+
+        socket.on("join_admin",(data) =>{
+            const userId = this.quizManager.addUser(data.roomId, data.name)
+            if (data.password !== ADMINPASSWORD) {
+                return
+            }
+            socket.emit("adminInit  ",{
+                userId,
+                state:this.quizManager.getCurrentState(roomId)
+            })
+            socket.on("createQuiz",data => {
+                this.quizManager.addQuiz(data.roomId)
+            })
+            socket.on("createProblem", data => {
+                this.quizManager.addProblem(data.roomId, data.problem)
+            })
+            socket.on("next",data => {
+                this.quizManager.next(data.roomId)
+            })
+        })
+
         socket.on("submit",(data) => {
             const userId = data.userId
             const problemId = data.problemId
